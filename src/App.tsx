@@ -9,9 +9,7 @@ import { useAuth } from './contexts/useAuth';
 // Components
 import AppLayout from './components/AppLayout';
 import RequireAuth from './components/RequireAuth';
-import RequireRole from './components/RequireRole';
 import PageNotFound from './components/PageNotFound';
-import PageLoading from './components/PageLoading';
 
 // Public pages
 import LoginPage from './pages/public/LoginPage';
@@ -43,17 +41,14 @@ import ReportsPage from './pages/admin/ReportsPage';
 const queryClient = new QueryClient();
 
 const AppRoutes: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  
+  console.log('AppRoutes - isAuthenticated:', isAuthenticated, 'role:', role);  // <-- ДЛЯ ОТЛАДКИ
 
-  if (isAuthenticated === null) {
-    return <PageLoading />;
-  }
-
-  // Если пользователь не авторизован - показываем только страницы входа и регистрации
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');  // <-- ДЛЯ ОТЛАДКИ
     return (
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/photographers/:id" element={<PhotographerDetailPage />} />
@@ -62,50 +57,47 @@ const AppRoutes: React.FC = () => {
     );
   }
 
-  // Если пользователь авторизован - показываем все страницы
+  console.log('Authenticated, role:', role);  // <-- ДЛЯ ОТЛАДКИ
+
   return (
     <Routes>
-      {/* Перенаправляем с login/register на главную */}
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Navigate to="/" replace />} />
       <Route path="/photographers/:id" element={<PhotographerDetailPage />} />
+      <Route path="/book/:photographerId" element={<BookPhotographerPage />} />
 
-      {/* Защищенные маршруты */}
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          {/* Маршруты для клиента */}
-          <Route element={<RequireRole allowedRoles={['Client']} />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/my-bookings" element={<MyBookingsPage />} />
-            <Route path="/book/:photographerId" element={<BookPhotographerPage />} />
-          </Route>
-
-          {/* Маршруты для фотографа - главная перенаправляет на дашборд */}
-          <Route element={<RequireRole allowedRoles={['Photographer']} />}>
-            <Route path="/" element={<Navigate to="/photographer/dashboard" replace />} />
-            <Route path="/photographer/dashboard" element={<PhotographerDashboardPage />} />
-            <Route path="/photographer/booking/:id" element={<BookingDetailsPage />} />
-            <Route path="/photographer/schedule" element={<SchedulePage />} />
-            <Route path="/photographer/portfolio" element={<PortfolioPage />} />
-            <Route path="/photographer/statistics" element={<StatisticsPage />} />
-            <Route path="/photographer/profile" element={<PhotographerProfilePage />} />
-          </Route>
-
-          {/* Маршруты для администратора - главная перенаправляет на дашборд */}
-          <Route element={<RequireRole allowedRoles={['Admin']} />}>
-            <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/categories" element={<CategoriesPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
-            <Route path="/admin/orders" element={<OrdersPage />} />
-            <Route path="/admin/reports" element={<ReportsPage />} />
-          </Route>
+          <Route path="/" element={
+            (() => {
+              console.log('Rendering home page for role:', role);  // <-- ДЛЯ ОТЛАДКИ
+              if (role === 'Client') return <HomePage />;
+              if (role === 'Photographer') return <PhotographerDashboardPage />;
+              if (role === 'Admin') return <AdminDashboardPage />;
+              console.log('No matching role, redirecting to login');  // <-- ДЛЯ ОТЛАДКИ
+              return <Navigate to="/login" replace />;
+            })()
+          } />
+          
+          <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/my-bookings" element={<MyBookingsPage />} />
+          
+          <Route path="/photographer/dashboard" element={<PhotographerDashboardPage />} />
+          <Route path="/photographer/booking/:id" element={<BookingDetailsPage />} />
+          <Route path="/photographer/schedule" element={<SchedulePage />} />
+          <Route path="/photographer/portfolio" element={<PortfolioPage />} />
+          <Route path="/photographer/statistics" element={<StatisticsPage />} />
+          <Route path="/photographer/profile" element={<PhotographerProfilePage />} />
+          
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/categories" element={<CategoriesPage />} />
+          <Route path="/admin/users" element={<UsersPage />} />
+          <Route path="/admin/orders" element={<OrdersPage />} />
+          <Route path="/admin/reports" element={<ReportsPage />} />
         </Route>
       </Route>
 
-      {/* 404 */}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
